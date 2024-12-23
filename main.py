@@ -1,48 +1,54 @@
-import pyzbar.pyzbar as pyzbar
 import cv2
+import subprocess
 import time
+from pyzbar.pyzbar import decode
+import numpy as np
 
-# 바코드가 포함된 이미지 경로
-image_path = "C:\\Users\\min12\\Desktop\\barcode_catalog_4.png"
+# 시간 측정 시작
+start_time = time.time()
+
+# gphoto2 명령어로 카메라에서 이미지 캡처
+capture_start_time = time.time()
+subprocess.run(["gphoto2", "--capture-image-and-download", "--filename", "captured_image.jpg"])
+capture_end_time = time.time()
 
 # 이미지 로드
-img = cv2.imread(image_path)
-if img is None:
-    print("Error: Cannot load the image.")
-    exit()
+image_load_start_time = time.time()
+image = cv2.imread("captured_image.jpg")
+image_load_end_time = time.time()
 
-# 그레이스케일 변환
-gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+# 바코드 인식
+barcode_start_time = time.time()
+barcodes = decode(image)
+barcode_end_time = time.time()
 
-# 바코드 디코딩 및 시간 측정
-start_time = time.time_ns()
-decoded = pyzbar.decode(gray)
-end_time = time.time_ns()
+# 바코드가 인식된 경우 바코드 내용 출력
+for barcode in barcodes:
+    barcode_data = barcode.data.decode("utf-8")
+    barcode_type = barcode.type
+    print(f"Detected {barcode_type} barcode: {barcode_data}")
 
-# 결과 처리
-found = False
-for d in decoded:
-    barcode_data = d.data.decode("utf-8")
-    if barcode_data == "54314eeee":
-        found = True
-        x, y, w, h = d.rect
+    # 바코드 위치를 이미지에 표시
+    rect_points = barcode.polygon
+    if len(rect_points) == 4:
+        pts = np.array(rect_points, dtype="int32")
+        pts = pts.reshape((-1, 1, 2))
+        cv2.polylines(image, [pts], True, (0, 255, 0), 2)
 
-        print(f"Barcode Data: {barcode_data}")
-        print(f"Coordinates: Top-left ({x}, {y}), Width: {w}, Height: {h}")
-        print(f"Corners: ({x}, {y}), ({x+w}, {y}), ({x}, {y+h}), ({x+w}, {y+h})")
-        break
-
-if not found:
-    print("Barcode '54314eeee' not found in the image.")
-
-# 시간 출력
-elapsed_time_ns = end_time - start_time
-print(f"Processing Time: {elapsed_time_ns} ns")
+    # 바코드 데이터 텍스트 추가
+    x, y, w, h = barcode.rect
+    cv2.putText(image, barcode_data, (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
 
 # 결과 이미지 출력
-if found:
-    cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
-    cv2.putText(img, "54314eeee", (x, y - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 0), 2, cv2.LINE_AA)
-    cv2.imshow("Result", img)
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
+cv2.imshow("Barcode Scanner", image)
+cv2.waitKey(0)
+cv2.destroyAllWindows()
+
+# 전체 소요 시간
+end_time = time.time()
+
+# 각 단계별 소요 시간 출력
+print(f"Time taken for image capture: {capture_end_time - capture_start_time:.2f} seconds")
+print(f"Time taken for image loading: {image_load_end_time - image_load_start_time:.2f} seconds")
+print(f"Time taken for barcode decoding: {barcode_end_time - barcode_start_time:.2f} seconds")
+print(f"Total time taken: {end_time - start_time:.2f} seconds")
