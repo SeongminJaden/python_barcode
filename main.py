@@ -7,22 +7,22 @@ import numpy as np
 # 시간 측정 시작
 start_time = time.time()
 
-# gphoto2 명령어로 카메라에서 이미지 캡처
+# 1. gphoto2 명령어로 카메라에서 이미지 캡처
 capture_start_time = time.time()
-subprocess.run(["gphoto2", "--capture-image-and-download", "--filename", "captured_image.jpg"])
+subprocess.run(["gphoto2", "--capture-image-and-download", "--filename", "captured_image.jpg"], check=True)
 capture_end_time = time.time()
 
-# 이미지 로드
+# 2. 이미지 로드
 image_load_start_time = time.time()
 image = cv2.imread("captured_image.jpg")
 image_load_end_time = time.time()
 
-# 바코드 인식
+# 3. 바코드 인식
 barcode_start_time = time.time()
 barcodes = decode(image)
 barcode_end_time = time.time()
 
-# 바코드가 인식된 경우 바코드 내용 출력
+# 4. 바코드가 인식된 경우 처리
 for barcode in barcodes:
     barcode_data = barcode.data.decode("utf-8")
     barcode_type = barcode.type
